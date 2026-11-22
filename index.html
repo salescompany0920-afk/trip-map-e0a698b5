@@ -46,6 +46,9 @@ button:focus-visible,summary:focus-visible{outline:3px solid #FFC83D;outline-off
 .c.w,.k.w{fill:var(--W)} .c.m,.k.m{fill:var(--M)} .c.b,.k.b{fill:var(--B)}
 .c.hit,.k{cursor:pointer}
 .c.sel{stroke:#fff;stroke-width:1.8}
+.arc{fill:none;stroke-width:1.1;stroke-opacity:.6;vector-effect:non-scaling-stroke;pointer-events:none}
+.arc.w{stroke:var(--W)} .arc.m{stroke:var(--M)} .arc.b{stroke:var(--B)} .arc.off{display:none}
+.mapbtn button[aria-pressed="true"]{background:#fff;color:var(--ink);border-color:#fff;font-weight:700}
 .dot{fill:#fff;stroke-width:2.2;vector-effect:non-scaling-stroke;cursor:pointer}
 .dot.w{stroke:#0B4FB8} .dot.m{stroke:#B3173A} .dot.b{stroke:#5B21B6} .dot.off{display:none}
 .home{fill:#FFC83D;stroke:#fff;stroke-width:1.6;vector-effect:non-scaling-stroke;pointer-events:none}
@@ -59,6 +62,7 @@ button:focus-visible,summary:focus-visible{outline:3px solid #FFC83D;outline-off
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
 .chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.24);color:#fff;border-radius:999px;padding:6px 14px 6px 10px;font-size:14.5px;display:inline-flex;align-items:center;gap:7px;min-height:38px}
 .chip[aria-pressed="true"]{background:#fff;color:var(--ink);border-color:#fff;font-weight:700}
+.tally[data-f="w"] td:not(.w),.tally[data-f="w"] thead th:not(.w),.tally[data-f="m"] td:not(.m),.tally[data-f="m"] thead th:not(.m),.tally[data-f="b"] td:not(.b),.tally[data-f="b"] thead th:not(.b){opacity:.28}
 .sw{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--fog);flex:none}
 .sw.w{background:var(--W)} .sw.m{background:var(--M)} .sw.b{background:var(--B)}
 .sw.a{background:linear-gradient(90deg,var(--W) 0 33%,var(--B) 33% 66%,var(--M) 66%)}
@@ -168,13 +172,14 @@ footer{max-width:1180px;margin:0 auto;padding:26px 16px calc(30px + env(safe-are
         <div class="box" id="mapbox">
           <svg id="map" role="img"></svg>
           <div class="mapbtn">
+            <button type="button" id="b-arcs" aria-pressed="true"></button>
             <button type="button" id="b-in" aria-label="확대">＋</button>
             <button type="button" id="b-out" aria-label="축소">－</button>
             <button type="button" id="b-focus"></button>
             <button type="button" id="b-reset"></button>
           </div>
         </div>
-        <div class="chips" id="chips" role="group"></div>
+        <div class="chips" id="chips" role="group" aria-label="보기 · 查看"></div>
       </div>
       <aside class="side">
         <h2 class="sr" id="h-sofar"></h2>
@@ -243,20 +248,20 @@ let lang=LS.get("trip.lang")||((navigator.language||"").toLowerCase().indexOf("z
 let filter="all",sel=null,tab="world";
 
 const L={
-ko:{title:"우리 여행 지도",sub:"함께 {b}개 나라, {c}개 도시. 아직 가지 않은 나라 {r}곳.",bySido:"시·도별",world:"세계",kr:"국내",all:"전체",both:"함께",cont:"대륙",country:"나라",city:"도시",
+ko:{title:"우리 여행 지도",sub:"함께 {b}개 나라, {c}개 도시. 아직 가지 않은 나라 {r}곳.",bySido:"시·도별",subP:"{p}의 여행은 {b}개 나라, {c}개 도시.",world:"세계",kr:"국내",all:"전체",both:"함께",cont:"대륙",country:"나라",city:"도시",
   region:"+{n} 지역",unLine:"유엔 회원국 <b>{t}곳</b> 가운데 <b>{n}곳</b>",sofar:"지금까지",byCont:"대륙별",freq:"자주 간 도시",
   cities:"다녀온 도시",family:"가족",hint:"나라나 칸을 누르면 다녀온 도시가 보입니다.",home:"우리가 사는 곳",notYet:"아직 가지 않은 곳",
-  times:"{n}번",reset:"전체",focus:"다녀온 곳",arcs:"서울에서 뻗은 선",remain:"남은 곳 {n}곳 보기",allDone:"모두 다녀왔습니다",
+  times:"{n}번",reset:"전체",focus:"다녀온 곳",line:"선",arcs:"서울에서 뻗은 선",remain:"남은 곳 {n}곳 보기",allDone:"모두 다녀왔습니다",
   famEmpty:"아직 기록이 없습니다. 다녀온 곳을 알려 주면 여기에 채웁니다.",next:"다음 여행 준비 중",
   krHint:"다녀온 시·군·구를 눌러 표시하세요. 누를 때마다 함께, {w}, {m}, 지움 순서로 바뀝니다.",
   krNote:"표시는 이 기기에만 저장됩니다. 아래 버튼으로 복사해 비서에게 보내면 모두가 보는 지도에 반영됩니다.",
   copy:"표시 내용 복사",copied:"복사했습니다",clear:"이 기기의 표시 지우기",sido:"시·도",sgg:"시·군·구",none:"표시 없음",
   foot:"기준일 {d} · 지도 Natural Earth, 통계청 · 나라 이름 world-countries (ODbL)",
   ct:{as:"아시아",eu:"유럽",oc:"오세아니아",na:"북아메리카",sa:"남아메리카",af:"아프리카"}},
-zh:{title:"我们的旅行地图",sub:"一起去过{b}个国家、{c}座城市，还有{r}个国家没去。",bySido:"按市·道",world:"世界",kr:"韩国",all:"全部",both:"一起",cont:"大洲",country:"国家",city:"城市",
+zh:{title:"我们的旅行地图",sub:"一起去过{b}个国家、{c}座城市，还有{r}个国家没去。",bySido:"按市·道",subP:"{p}去过{b}个国家、{c}座城市。",world:"世界",kr:"韩国",all:"全部",both:"一起",cont:"大洲",country:"国家",city:"城市",
   region:"+{n} 地区",unLine:"联合国 <b>{t}个</b>会员国中去过 <b>{n}个</b>",sofar:"到现在为止",byCont:"按大洲",freq:"常去的城市",
   cities:"去过的城市",family:"家人",hint:"点击国家或方块，查看去过的城市。",home:"我们住的地方",notYet:"还没去过",
-  times:"{n}次",reset:"全图",focus:"去过的地方",arcs:"从首尔出发的线",remain:"查看还没去的{n}个",allDone:"全部去过了",
+  times:"{n}次",reset:"全图",focus:"去过的地方",line:"线",arcs:"从首尔出发的线",remain:"查看还没去的{n}个",allDone:"全部去过了",
   famEmpty:"还没有记录。告诉我们去过哪里，就会补在这里。",next:"下一次旅行准备中",
   krHint:"点击去过的市·郡·区来标记。每点一次，按一起、{w}、{m}、取消的顺序切换。",
   krNote:"标记只保存在这台设备上。用下面的按钮复制后发给秘书，就会更新到大家看的地图上。",
@@ -293,9 +298,10 @@ const proj=d3.geoNaturalEarth1().rotate([-11,0]),path=d3.geoPath(proj);
 let W=0,H=0,K=1;
 g.append("path").attr("class","sphere").datum({type:"Sphere"});
 g.append("path").attr("class","grat").datum(d3.geoGraticule10());
-const gLand=g.append("g"),gDot=g.append("g"),gLbl=g.append("g");
+const gLand=g.append("g"),gArc=g.append("g"),gDot=g.append("g"),gLbl=g.append("g");
 const lands=gLand.selectAll("path").data(feats).join("path").on("click",(e,d)=>{const cc=byN3[d.id];if(cc)pick(cc)});
 const home=[D.home.lon,D.home.lat];
+const arcs=gArc.selectAll("path").data(cities).join("path");let arcsOn=true;
 const dots=gDot.selectAll("circle").data(cities).join("circle").on("click",(e,d)=>pick(d.cc));
 const homeDot=g.append("circle").attr("class","home");
 const lbls=gLbl.selectAll("text").data(cities).join("text").attr("class","lbl");
@@ -317,6 +323,7 @@ function layout(){
   zoom.extent([[0,0],[W,H]]).translateExtent([[0,0],[W,H]]);
   g.select(".sphere").attr("d",path);g.select(".grat").attr("d",path);
   lands.attr("d",path);
+  arcs.attr("d",d=>path({type:"LineString",coordinates:[home,[d.lon,d.lat]]}));
   const xy=d=>proj([d.lon,d.lat]);
   dots.attr("cx",d=>xy(d)[0]).attr("cy",d=>xy(d)[1]);
   lbls.attr("x",d=>xy(d)[0]).attr("y",d=>xy(d)[1]);
@@ -333,6 +340,7 @@ function focus(anim){
 }
 function paintMap(){
   lands.attr("class",d=>{const cc=byN3[d.id];return "c "+vis(stOf(cc))+(cc?" hit":"")+(cc&&cc===sel?" sel":"")});
+  arcs.attr("class",d=>{const v=vis(d.st);return "arc "+(v&&arcsOn?v:"off")});$("#b-arcs").setAttribute("aria-pressed",String(arcsOn));
   dots.attr("class",d=>{const v=vis(d.st);return "dot "+(v||"off")});
   lbls.text(d=>nm(d)).attr("class",d=>"lbl"+(vis(d.st)?"":" off"));
   svg.attr("aria-label",tx("title"));
@@ -340,9 +348,9 @@ function paintMap(){
 
 /* ---------- 요약 표 ---------- */
 function renderTally(){
-  const ps=["w","b","m"],cn=ps.map(counts);
+  const ps=["b","w","m"],cn=ps.map(counts);
   const row=(label,f,sub)=>"<tr><th scope='row'>"+label+"</th>"+ps.map((p,i)=>"<td class='"+p+"'><span class='num'>"+f(cn[i])+"</span><small>"+(sub?sub(cn[i]):"")+"</small></td>").join("")+"</tr>";
-  $("#tally").innerHTML="<table class='tally'><thead><tr><th></th>"+ps.map(p=>"<th scope='col'><i class='sw "+p+"'></i>"+esc(who(p))+"</th>").join("")+"</tr></thead><tbody>"+
+  $("#tally").innerHTML="<table class='tally' data-f='"+filter+"'><thead><tr><th></th>"+ps.map(p=>"<th scope='col' class='"+p+"'><i class='sw "+p+"'></i>"+esc(who(p))+"</th>").join("")+"</tr></thead><tbody>"+
     row(tx("cont"),c=>c.ct)+row(tx("country"),c=>c.un,c=>c.rg?tx("region",{n:c.rg}):"")+row(tx("city"),c=>c.cy)+"</tbody></table>";
   const un=Object.keys(cst).filter(cc=>C[cc].un),n={b:0,w:0,m:0};
   un.forEach(cc=>n[stOf(cc)]++);
@@ -407,10 +415,11 @@ function renderCities(){
 
 /* ---------- 걸러 보기 ---------- */
 function renderChips(){
-  const items=[["all","a",tx("all")],["w","w",who("w")],["b","b",who("b")],["m","m",who("m")]];
+  const items=[["all","a",tx("all")],["b","b",who("b")],["w","w",who("w")],["m","m",who("m")]];
   $("#chips").innerHTML=items.map(i=>"<button type='button' class='chip' data-f='"+i[0]+"' aria-pressed='"+(filter===i[0])+"'><i class='sw "+i[1]+"'></i>"+esc(i[2])+"</button>").join("");
 }
-$("#chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;filter=b.dataset.f;renderChips();paintMap();markCells();renderCities()});
+$("#chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;filter=b.dataset.f;renderChips();paintMap();markCells();renderCities();renderTally();renderSub();kPaint()});
+$("#b-arcs").addEventListener("click",()=>{arcsOn=!arcsOn;paintMap()});
 $("#b-reset").addEventListener("click",()=>go(d3.zoomIdentity,true));
 $("#b-focus").addEventListener("click",()=>focus(true));
 $("#b-in").addEventListener("click",()=>svg.transition().duration(reduce?0:250).call(zoom.scaleBy,1.7));
@@ -444,9 +453,9 @@ function klayout(){
   kReady=true;
 }
 function kPaint(){
-  kPaths.attr("class",d=>"k "+kState(d.properties.c));
+  kPaths.attr("class",d=>"k "+vis(kState(d.properties.c)));
   kLbl.text(d=>D.sido[d.c][lang==="zh"?1:0]);
-  const ps=["w","b","m"],hit=(s,p)=>p==="b"?s==="b":(s===p||s==="b");
+  const ps=["b","w","m"],hit=(s,p)=>p==="b"?s==="b":(s===p||s==="b");
   const sg=p=>kf.filter(f=>hit(kState(f.properties.c),p)).length;
   const sd=p=>new Set(kf.filter(f=>hit(kState(f.properties.c),p)).map(f=>f.properties.c.slice(0,2))).size;
   const row=(label,f,tot)=>"<tr><th scope='row'>"+label+"</th>"+ps.map(p=>"<td class='"+p+"'><span class='num'>"+f(p)+"</span><small>/ "+tot+"</small></td>").join("")+"</tr>";
@@ -475,12 +484,17 @@ $("#k-copy").addEventListener("click",()=>{
 $("#k-clear").addEventListener("click",()=>{kLocal={};LS.del("trip.kr.v1");kPaint();$("#k-sel").textContent=""});
 
 /* ---------- 글자 · 탭 · 언어 ---------- */
+function renderSub(){
+  if(filter==="w"||filter==="m"){const c=counts(filter);$("#t-sub").textContent=tx("subP",{p:who(filter),b:c.un,c:c.cy});return}
+  const cb=counts("b"),un=Object.keys(cst).filter(cc=>C[cc].un).length;
+  $("#t-sub").textContent=tx("sub",{b:cb.un,c:cb.cy,r:D.unTotal-un});
+}
 function renderText(){
   document.documentElement.lang=lang==="zh"?"zh-Hans":"ko";
   document.title=tx("title");
   const set=(id,k,v)=>{$(id).textContent=tx(k,v)};
-  set("#t-title","title");{const cb=counts("b"),un=Object.keys(cst).filter(cc=>C[cc].un).length;$("#t-sub").textContent=tx("sub",{b:cb.un,c:cb.cy,r:D.unTotal-un})}set("#h-sido","bySido");set("#tab-world","world");set("#tab-kr","kr");
-  set("#b-reset","reset");set("#b-focus","focus");set("#kb-reset","reset");
+  set("#t-title","title");renderSub();set("#h-sido","bySido");set("#tab-world","world");set("#tab-kr","kr");
+  set("#b-arcs","line");set("#b-reset","reset");set("#b-focus","focus");set("#kb-reset","reset");
   set("#h-sofar","sofar");set("#kh-sofar","sofar");set("#h-cont","byCont");set("#h-freq","freq");set("#h-fam","family");set("#h-cities","cities");
   set("#k-hint","krHint",{w:who("w"),m:who("m")});set("#k-note","krNote");set("#k-copy","copy");set("#k-clear","clear");
   set("#foot","foot",{d:D.updated});
