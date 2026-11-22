@@ -21,7 +21,7 @@ body.nopin form,body.nopin .pw{display:none}
 <small>받은 주소 전체로 열어야 합니다 <span lang="zh-Hans">· 请用收到的完整链接打开</span></small>
 </main><script>
 (function(){
-  var SALT=Uint8Array.from(atob('PR1F89TbAwgQbSEbSaBcQg=='),function(c){return c.charCodeAt(0)}),ITER=600000,VER='930af0bd4524',USEPIN=0===1,AAD=new TextEncoder().encode('hub-v1');
+  var SALT=Uint8Array.from(atob('PR1F89TbAwgQbSEbSaBcQg=='),function(c){return c.charCodeAt(0)}),ITER=600000,VER='dd4dffdea4c8',USEPIN=0===1,AAD=new TextEncoder().encode('hub-v1');
   var msg=document.getElementById('msg'),f=document.getElementById('f'),go=document.getElementById('go'),buf=null;
   function say(t,ok){msg.textContent=t;msg.className=ok?'ok':''}
   function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
