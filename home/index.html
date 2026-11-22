@@ -1,0 +1,49 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#14213D"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="우리 여행"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png"><link rel="icon" href="icon.png"><title>우리 여행</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:#14213D;color:#fff;font:17px/1.5 'Pretendard','Apple SD Gothic Neo','PingFang SC','Malgun Gothic','Microsoft YaHei','Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;display:flex;align-items:center;justify-content:center;padding:24px}
+main{width:100%;max-width:340px}h1{margin:0 0 4px;font-size:26px;letter-spacing:-.02em}p{margin:0 0 18px;color:#C9D2E3;font-size:15px}
+label{display:block;font-size:15px;margin-bottom:6px}input[type=password]{width:100%;height:56px;border-radius:14px;border:2px solid #3A4A70;background:#1B2B52;color:#fff;font:600 24px/1 inherit;letter-spacing:.3em;text-align:center;padding:0 12px}
+input[type=password]:focus{outline:none;border-color:#9DB8FF}button{width:100%;height:54px;margin-top:12px;border:0;border-radius:14px;background:#fff;color:#14213D;font:700 17px/1 inherit}button:disabled{opacity:.6}
+.rm{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;color:#C9D2E3}.rm input{width:22px;height:22px;accent-color:#fff}
+#msg{min-height:24px;margin-top:14px;font-size:15px;color:#FFD08A}#msg.ok{color:#C9D2E3}small{display:block;margin-top:22px;color:#93A0BC;font-size:13px}
+</style></head><body><main>
+<h1>우리 여행 <span lang="zh-Hans" style="font-size:17px;color:#C9D2E3">我们的旅行</span></h1>
+<p>비밀번호를 넣어 주세요 <span lang="zh-Hans">· 请输入密码</span></p>
+<form id="f" autocomplete="off"><label for="pin">비밀번호 <span lang="zh-Hans">密码</span></label>
+<input id="pin" type="password" inputmode="numeric" autocomplete="off" required autofocus>
+<button id="go" type="submit">열기 <span lang="zh-Hans">打开</span></button>
+<label class="rm"><input id="rm" type="checkbox" checked> 이 기기에서는 다시 묻지 않기 <span lang="zh-Hans">· 本机不再询问</span></label></form>
+<div id="msg" role="status" aria-live="polite"></div>
+<small>받은 주소 전체로 열어야 합니다 <span lang="zh-Hans">· 请用收到的完整链接打开</span></small>
+</main><script>
+(function(){
+  var SALT=Uint8Array.from(atob('PR1F89TbAwgQbSEbSaBcQg=='),function(c){return c.charCodeAt(0)}),ITER=600000,VER='48d22eed3c77',AAD=new TextEncoder().encode('hub-v1');
+  var msg=document.getElementById('msg'),f=document.getElementById('f'),go=document.getElementById('go'),buf=null;
+  function say(t,ok){msg.textContent=t;msg.className=ok?'ok':''}
+  function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
+  function b64(u8){var s='';for(var i=0;i<u8.length;i++)s+=String.fromCharCode(u8[i]);return btoa(s)}
+  function linkKey(){var m=/[#&]k=([^&]+)/.exec(location.hash);if(m){ls('hub.lk',m[1]);return m[1]}return ls('hub.lk')}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
+  function data(){if(buf)return Promise.resolve(buf);return fetch('data.bin?v='+VER).then(function(r){if(!r.ok)throw new Error('net');return r.arrayBuffer()}).then(function(b){buf=b;return b})}
+  // 먼저 풀어 보고(성공하면 열쇠를 기억), 그다음에 화면을 바꾼다. 화면을 바꾼 뒤에는 이 스크립트가 더 돌지 않을 수 있다(사파리).
+  function plain(key){return data().then(function(b){var u=new Uint8Array(b);
+    return crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(4,16),additionalData:AAD},key,u.slice(16))}).then(function(pt){return new TextDecoder('utf-8').decode(pt)})}
+  function put(html){document.open();document.write(html);document.close()}
+  function derive(pin,lk){return crypto.subtle.importKey('raw',new TextEncoder().encode(pin+':'+lk),'PBKDF2',false,['deriveKey']).then(function(m){
+    return crypto.subtle.deriveKey({name:'PBKDF2',salt:SALT,iterations:ITER,hash:'SHA-256'},m,{name:'AES-GCM',length:256},true,['decrypt'])})}
+  if(!window.crypto||!crypto.subtle){say('이 브라우저에서는 열 수 없습니다. 사파리나 크롬으로 열어 주세요.');go.disabled=true;return}
+  var saved=ls('hub.k');
+  if(saved){say('여는 중… 打开中…',true);crypto.subtle.importKey('raw',Uint8Array.from(atob(saved),function(c){return c.charCodeAt(0)}),{name:'AES-GCM'},false,['decrypt'])
+    .then(plain).then(put).catch(function(){ls('hub.k',null);say('다시 비밀번호를 넣어 주세요 · 请重新输入密码')})}
+  if(!linkKey()){say('주소가 완전하지 않습니다. 받은 주소 전체로 다시 열어 주세요 · 链接不完整，请用完整链接重新打开')}
+  f.addEventListener('submit',function(e){e.preventDefault();var lk=linkKey(),pin=document.getElementById('pin').value.trim();
+    if(!lk){say('주소가 완전하지 않습니다. 받은 주소 전체로 다시 열어 주세요 · 链接不完整');return}
+    go.disabled=true;say('여는 중… 打开中…',true);
+    derive(pin,lk).then(function(key){return (document.getElementById('rm').checked?crypto.subtle.exportKey('raw',key).then(function(raw){return b64(new Uint8Array(raw))}):Promise.resolve(null))
+      .then(function(rawb){return plain(key).then(function(html){if(rawb)ls('hub.k',rawb);put(html)})})})
+    .catch(function(err){go.disabled=false;say(err&&err.message==='net'?'인터넷 연결을 확인해 주세요 · 请检查网络':'비밀번호가 맞지 않습니다 · 密码不正确')})});
+})();
+</script></body></html>
