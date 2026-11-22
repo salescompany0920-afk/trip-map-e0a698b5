@@ -8,10 +8,11 @@ main{width:100%;max-width:340px}h1{margin:0 0 4px;font-size:26px;letter-spacing:
 label{display:block;font-size:15px;margin-bottom:6px}input[type=password]{width:100%;height:56px;border-radius:14px;border:2px solid #3A4A70;background:#1B2B52;color:#fff;font:600 24px/1 inherit;letter-spacing:.3em;text-align:center;padding:0 12px}
 input[type=password]:focus{outline:none;border-color:#9DB8FF}button{width:100%;height:54px;margin-top:12px;border:0;border-radius:14px;background:#fff;color:#14213D;font:700 17px/1 inherit}button:disabled{opacity:.6}
 .rm{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;color:#C9D2E3}.rm input{width:22px;height:22px;accent-color:#fff}
+body.nopin form,body.nopin .pw{display:none}
 #msg{min-height:24px;margin-top:14px;font-size:15px;color:#FFD08A}#msg.ok{color:#C9D2E3}small{display:block;margin-top:22px;color:#93A0BC;font-size:13px}
 </style></head><body><main>
 <h1>우리 여행 <span lang="zh-Hans" style="font-size:17px;color:#C9D2E3">我们的旅行</span></h1>
-<p>비밀번호를 넣어 주세요 <span lang="zh-Hans">· 请输入密码</span></p>
+<p class="pw">비밀번호를 넣어 주세요 <span lang="zh-Hans">· 请输入密码</span></p>
 <form id="f" autocomplete="off"><label for="pin">비밀번호 <span lang="zh-Hans">密码</span></label>
 <input id="pin" type="password" inputmode="numeric" autocomplete="off" required autofocus>
 <button id="go" type="submit">열기 <span lang="zh-Hans">打开</span></button>
@@ -20,7 +21,7 @@ input[type=password]:focus{outline:none;border-color:#9DB8FF}button{width:100%;h
 <small>받은 주소 전체로 열어야 합니다 <span lang="zh-Hans">· 请用收到的完整链接打开</span></small>
 </main><script>
 (function(){
-  var SALT=Uint8Array.from(atob('PR1F89TbAwgQbSEbSaBcQg=='),function(c){return c.charCodeAt(0)}),ITER=600000,VER='997008280a3b',AAD=new TextEncoder().encode('hub-v1');
+  var SALT=Uint8Array.from(atob('PR1F89TbAwgQbSEbSaBcQg=='),function(c){return c.charCodeAt(0)}),ITER=600000,VER='930af0bd4524',USEPIN=0===1,AAD=new TextEncoder().encode('hub-v1');
   var msg=document.getElementById('msg'),f=document.getElementById('f'),go=document.getElementById('go'),buf=null;
   function say(t,ok){msg.textContent=t;msg.className=ok?'ok':''}
   function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
@@ -35,6 +36,10 @@ input[type=password]:focus{outline:none;border-color:#9DB8FF}button{width:100%;h
   function derive(pin,lk){return crypto.subtle.importKey('raw',new TextEncoder().encode(pin+':'+lk),'PBKDF2',false,['deriveKey']).then(function(m){
     return crypto.subtle.deriveKey({name:'PBKDF2',salt:SALT,iterations:ITER,hash:'SHA-256'},m,{name:'AES-GCM',length:256},true,['decrypt'])})}
   if(!window.crypto||!crypto.subtle){say('이 브라우저에서는 열 수 없습니다. 사파리나 크롬으로 열어 주세요.');go.disabled=true;return}
+  function auto(){ // 비밀번호를 쓰지 않을 때: 주소의 열쇠만으로 연다
+    var lk=linkKey();if(!lk){say('주소가 완전하지 않습니다. 받은 주소 전체로 다시 열어 주세요 · 链接不完整，请用完整链接重新打开');return}
+    say('여는 중… 打开中…',true);derive('',lk).then(plain).then(put).catch(function(err){say(err&&err.message==='net'?'인터넷 연결을 확인해 주세요 · 请检查网络':'이 주소로는 열 수 없습니다. 받은 주소를 다시 확인해 주세요 · 无法用此链接打开')})}
+  if(!USEPIN){document.body.classList.add('nopin');ls('hub.k',null);auto();return}
   var saved=ls('hub.k');
   if(saved){say('여는 중… 打开中…',true);crypto.subtle.importKey('raw',Uint8Array.from(atob(saved),function(c){return c.charCodeAt(0)}),{name:'AES-GCM'},false,['decrypt'])
     .then(plain).then(put).catch(function(){ls('hub.k',null);say('다시 비밀번호를 넣어 주세요 · 请重新输入密码')})}
